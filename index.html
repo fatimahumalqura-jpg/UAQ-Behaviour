@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Behavior Tracking Sheet</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#fff; --fg:#1a1a1a; --line:#e0ddf5; --head:#eef0ff;
+    --good:#e2f7ea; --goodfg:#15803d; --bad:#fdeaea; --badfg:#b3261e;
+    --accent:#6d4fd1; --accent2:#00a3a3; --muted:#6b6b6b; --trophy:#fff3cf; --trophyline:#e0a800;
+    --warn:#fdeeea; --warnline:#c0392b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#161616; --fg:#eee; --line:#3a3a55; --head:#232336; --muted:#aaa; }
+  }
+  :root[data-theme="dark"]{ --bg:#161616; --fg:#eee; --line:#3a3a55; --head:#232336; --muted:#aaa; }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#f6f4ff 0%,#ffffff 260px);color:var(--fg);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    padding:18px;padding-top:calc(18px + env(safe-area-inset-top,0px));padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+  .banner{background:linear-gradient(120deg,#6d4fd1,#00a3a3);color:#fff;border-radius:14px;padding:16px 20px;margin-bottom:14px;box-shadow:0 4px 14px rgba(109,79,209,.25);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .banner h1{font-size:1.35rem;margin:0 0 4px;color:#fff}
+  .banner .sub{color:#eee6ff;font-size:.85rem;margin:0}
+  .status{font-size:.78rem;background:rgba(255,255,255,.18);padding:5px 12px;border-radius:20px;white-space:nowrap}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .tab{border:1px solid var(--line);background:var(--head);color:#3a3a55;padding:7px 14px;border-radius:20px;cursor:pointer;font-size:.9rem;font-weight:600}
+  .tab.active{background:linear-gradient(120deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(109,79,209,.35)}
+  select{padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font-size:.85rem}
+  .btn{padding:8px 16px;border:none;background:linear-gradient(120deg,var(--accent),var(--accent2));color:#fff;border-radius:20px;cursor:pointer;font-size:.85rem;font-weight:600;box-shadow:0 2px 6px rgba(109,79,209,.3)}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .btn.secondary{background:#fff;color:var(--accent);border:1.5px solid var(--accent);box-shadow:none}
+  .btn.green{background:linear-gradient(120deg,#1e9e5a,#22c37a)}
+  .btn.amber{background:linear-gradient(120deg,#e0a800,#f4c430)}
+  .btn.red{background:#fff;color:#c0392b;border:1.5px solid #c0392b;box-shadow:none}
+  .tablewrap{overflow-x:auto;max-width:100%;border:1px solid var(--line);border-radius:8px}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:.85rem}
+  th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:5px 6px;text-align:center}
+  th:last-child,td:last-child{border-right:none}
+  thead th{background:var(--head);color:#3a3a55;position:sticky;top:0;z-index:1}
+  tbody tr:nth-child(even){background:#faf9ff}
+  td.name,th.name{text-align:left;min-width:160px;position:sticky;left:0;background:#f1eeff;font-weight:600;box-shadow:2px 0 4px -2px rgba(0,0,0,.25);z-index:2}
+  thead th.name{background:var(--head);z-index:3}
+  input.score{width:44px;text-align:center;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--fg);padding:4px 2px;font-size:.85rem}
+  input.score.hi{background:var(--good);color:var(--goodfg);font-weight:700;border-color:var(--goodfg)}
+  input.score.lo{background:var(--bad);color:var(--badfg);font-weight:700;border-color:var(--badfg)}
+  td.total{font-weight:700;color:var(--accent)}
+  tr.top td{background:var(--good)}
+  tr.bottom td{background:var(--bad)}
+  input.nameinput{border:none;background:transparent;color:var(--fg);font-weight:600;width:100%;font-size:.85rem}
+  .rm{cursor:pointer;color:var(--muted);border:none;background:transparent;font-size:1rem}
+  .addrow{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .addrow input{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+  .section-title{margin:18px 0 8px;font-size:1rem;font-weight:700}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{border-radius:20px;padding:4px 10px;font-size:.78rem;border:1px solid var(--line)}
+  .chip.hi{background:var(--good);color:var(--goodfg);border-color:var(--goodfg)}
+  .chip.lo{background:var(--bad);color:var(--badfg);border-color:var(--badfg)}
+  .empty{color:var(--muted);font-size:.85rem}
+  .reward{border:2px solid var(--trophyline);background:var(--trophy);border-radius:10px;padding:14px;margin-top:14px}
+  .reward ol{margin:8px 0 0;padding-left:22px}
+  .reward li{margin:4px 0;font-weight:600}
+  .watch{border:2px solid var(--warnline);background:var(--warn);border-radius:10px;padding:14px;margin-top:14px}
+  .watch ol{margin:8px 0 0;padding-left:22px}
+  .watch li{margin:4px 0;font-weight:600}
+  .legend{font-size:.78rem;color:var(--muted);margin-top:6px}
+  .gallery{display:flex;flex-wrap:wrap;gap:10px}
+  .gallery .ph{border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--bg)}
+  .gallery .ph img{max-width:180px;max-height:130px;border-radius:6px;display:block;margin-bottom:4px}
+  .gallery .ph .lbl{font-size:.8rem;font-weight:600;margin-bottom:4px}
+  .photobox{border:1.5px dashed var(--accent);border-radius:10px;padding:12px;background:#f7f5ff}
+  #printArea{display:none}
+  @media print{
+    body>*:not(#printArea){display:none!important}
+    #printArea{display:block!important}
+    .ptable{width:100%;border-collapse:collapse;margin-bottom:14px}
+    .ptable th,.ptable td{border:1px solid #000;padding:3px 4px;text-align:center;font-size:10px}
+    .ptable th.name,.ptable td.name{text-align:left;min-width:120px}
+    .pbreak{page-break-before:always}
+    .phead{font-size:16px;font-weight:700;margin-bottom:2px}
+    .psub{font-size:12px;margin-bottom:10px}
+  }
+</style>
+</head>
+<body>
+<div class="banner">
+  <div>
+    <h1>🏫 Behavior Tracking Sheet</h1>
+    <div class="sub" id="gradeLine"></div>
+  </div>
+  <div class="status" id="statusPill">Connecting…</div>
+</div>
+
+<div class="row" id="gradeTabs"></div>
+<div class="row">
+  <label>Month:&nbsp;<select id="monthSelect"></select></label>
+  <label>Week:&nbsp;<select id="weekSelect"></select></label>
+  <button class="btn secondary" id="printBtn">🖨️ Download week as PDF</button>
+  <button class="btn green" id="excelBtn">⬇️ Export to Excel (.xlsx)</button>
+  <button class="btn red" id="clearBtn">🗑️ Clear this week</button>
+</div>
+<div class="row">
+  <button class="btn amber" id="rosterBtn">📥 Upload roster (Excel)</button>
+  <input type="file" id="rosterFile" accept=".xlsx,.xls,.csv" style="display:none">
+  <span class="empty">Needs columns "Grade" and "Student Name".</span>
+</div>
+<div class="row" id="tabs"></div>
+<div id="panels"></div>
+
+<div id="printArea"></div>
+
+<script>
+(function(){
+  const DAYS=["Mon","Tue","Wed","Thu","Fri"];
+  const PERIODS=[1,2,3,4,5,6,7];
+  const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const WEEKS=[1,2,3,4,5];
+  const HI=8, LO=5;
+  const GRADES=["1","2","3","4","5","6","7","8"];
+  const TABS=[...DAYS,"Overview"];
+  const emptyWeek=()=>({scores:{Mon:{},Tue:{},Wed:{},Thu:{},Fri:{}},photos:{}});
+
+  let canWrite=true;
+  let rosterCache={}, weekCache=emptyWeek();
+  let activeGrade="1";
+  const now=new Date();
+  let activeMonth=MONTHS[now.getMonth()];
+  let activeWeek=1;
+  let activeTab="Mon";
+  let busyReading=false;          // true while a photo is being read
+  const lastPeriod={};            // remembers the chosen period per day
+  const photoCache={};            // photo id -> data URL (avoids re-downloading on every redraw)
+
+  function weekId(){ return activeGrade+'_'+activeMonth+'_W'+activeWeek; }
+  function students(){ return rosterCache[activeGrade]||[]; }
+  function getScore(day,period,idx,w){
+    w=w||weekCache;
+    const p=w.scores[day]&&w.scores[day][period];
+    if(!p) return "";
+    const v=p[idx];
+    return (v===undefined||v===null)?"":v;
+  }
+  function dayTotal(idx,day,w){
+    w=w||weekCache;
+    let sum=0, any=false;
+    PERIODS.forEach(p=>{ const v=getScore(day,p,idx,w); if(v!==""){ sum+=Number(v); any=true; } });
+    return any?sum:"";
+  }
+  function weeklyAvg(idx,w){
+    w=w||weekCache;
+    const all=[];
+    DAYS.forEach(d=>PERIODS.forEach(p=>{ const v=getScore(d,p,idx,w); if(v!=="") all.push(Number(v)); }));
+    if(!all.length) return null;
+    return all.reduce((a,b)=>a+b,0)/all.length;
+  }
+  function rankedList(w){ return students().map((name,idx)=>({name,idx,avg:weeklyAvg(idx,w)})); }
+
+  function setStatus(text,bg){
+    const el=document.getElementById('statusPill');
+    el.textContent=text;
+    el.style.background=bg||'rgba(255,255,255,.18)';
+  }
+
+  // ---------- backend wiring (Google Drive via Apps Script) ----------
+  // >>> PASTE your Apps Script Web app URL between the quotes (replace PASTE_URL_HERE) <<<
+  const API_URL='PASTE_URL_HERE';
+  const hasGS = API_URL.indexOf('https://')===0;
+  async function gs(fn){
+    const args=Array.prototype.slice.call(arguments,1);
+    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:args})});
+    const raw=await r.text();
+    let j;
+    try{ j=JSON.parse(raw); }catch(e){ throw new Error('NOT_JSON: '+raw.slice(0,150)); }
+    if(!j.ok) throw new Error(j.error);
+    return j.result;
+  }
+  // Turns a technical error into plain instructions
+  function explainError(e){
+    const m=String(e&&e.message?e.message:e);
+    return friendlyError(m)+'\n\n(Details: '+m.slice(0,300)+')';
+  }
+  function friendlyError(m){
+    if(/^AI error/.test(m)){
+      if(/SERVICE_DISABLED|has not been used|is disabled/i.test(m)) return 'The Gemini API is switched off for the project your key belongs to. Create the key again at aistudio.google.com (Get API key → Create API key) and paste the new key into Script properties.';
+      if(/API_KEY_INVALID|API key not valid|API key expired/i.test(m)) return 'The GEMINI_API_KEY in Script properties is wrong. Copy the key again from aistudio.google.com and paste it (with no spaces) into Script properties.';
+      if(/location is not supported|FAILED_PRECONDITION/i.test(m)) return 'Gemini says the free tier is not available for this account or region.';
+      if(/AI error 429/.test(m)) return 'The free Gemini limit has been reached for now. Wait a few minutes (or until tomorrow if it keeps happening) and try again.';
+      if(/AI error 404/.test(m)) return 'The Gemini model could not be found. Send Claude this message so the model name can be updated.';
+      if(/AI error (5\d\d)/.test(m)) return 'The photo-reading service is busy right now. Wait a minute and try again.';
+      return 'Gemini refused the request.';
+    }
+    if(/unknown function/i.test(m))
+      return 'Your Google Apps Script is still running an OLD version that cannot read photos.\n\nIn the Apps Script editor: Deploy → Manage deployments → ✏️ (Edit) → Version: "New version" → Deploy.\nThen try the photo again.';
+    if(/ANTHROPIC_API_KEY|GEMINI_API_KEY/.test(m))
+      return 'The photo-reading key is missing.\n\nIn the Apps Script editor: ⚙️ Project Settings → Script properties → Add property:\nName: GEMINI_API_KEY\nValue: your key from aistudio.google.com\nThen try again. (If you still see this, deploy a New version of the script.)';
+    if(/UrlFetchApp|permission|authoriz/i.test(m))
+      return 'Apps Script has not been given permission to contact the photo-reading service.\n\nIn the Apps Script editor: choose "setupCheck" in the function menu at the top, click ▶ Run, and click Allow on the permission screens. Then Deploy → Manage deployments → Edit → New version → Deploy.';
+    if(/AI error (400|401|403)/.test(m) && /API_KEY|api key|PERMISSION_DENIED|UNAUTHENTICATED/i.test(m))
+      return 'The GEMINI_API_KEY in Script properties is wrong or has been deleted. Copy the key again from aistudio.google.com and paste it into Script properties.';
+    if(/AI error 429/.test(m)) return 'The free Gemini limit has been reached for now. Wait a few minutes (or until tomorrow if it keeps happening) and try again.';
+    if(/AI error 404/.test(m)) return 'The Gemini model could not be found. Tell Claude this message so the model name in the script can be updated:\n\n'+m;
+    if(/AI error (5\d\d)/.test(m)) return 'The photo-reading service is busy right now. Wait a minute and try again.';
+    if(/NOT_JSON/.test(m)) return 'The Apps Script web app sent back an error page instead of data.\n\nCheck: Deploy → Manage deployments → Edit → "Who has access" must be "Anyone", then deploy a New version.';
+    if(/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'Could not reach Google. Check the internet connection and try again.';
+    return 'Could not read the photo: '+m;
+  }
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const pending={}; let flushing=false, retryTimer=null;
+  function queueSave(key,fn,args){ pending[key]={fn,args}; flush(); }
+  async function flush(){
+    if(flushing) return; flushing=true;
+    setStatus('🔄 Saving to Drive…');
+    try{
+      while(Object.keys(pending).length){
+        const k=Object.keys(pending)[0]; const job=pending[k]; delete pending[k];
+        try{ await gs.apply(null,[job.fn].concat(job.args)); }
+        catch(e){
+          if(!pending[k]) pending[k]=job;
+          setStatus('⚠️ Could not save — retrying…','rgba(255,80,80,.4)');
+          clearTimeout(retryTimer); retryTimer=setTimeout(flush,5000);
+          return;
+        }
+      }
+      setStatus('🟢 Saved to Google Drive');
+    } finally { flushing=false; }
+  }
+  async function idle(){ while(flushing||Object.keys(pending).length){ await sleep(200); } }
+
+  let loadToken=0;
+  async function initBackend(){
+    if(!hasGS){
+      setStatus('⚠️ Not connected to Drive — add your Web app URL in the code','rgba(255,255,255,.3)');
+      render(); return;
+    }
+    subscribeAll();
+  }
+  async function subscribeAll(){
+    if(!hasGS) return;
+    const t=++loadToken, g=activeGrade, wid=weekId();
+    weekCache=emptyWeek(); render();
+    setStatus('🔄 Loading from Drive…');
+    try{
+      const r=await Promise.all([gs('getRoster',g),gs('getWeek',wid)]);
+      if(t!==loadToken) return;
+      rosterCache[g]=(r[0]&&r[0].list)||[];
+      weekCache=r[1]||emptyWeek();
+      if(!weekCache.photos) weekCache.photos={};
+      if(!weekCache.scores) weekCache.scores={Mon:{},Tue:{},Wed:{},Thu:{},Fri:{}};
+      setStatus('🟢 Synced with Google Drive');
+      render();
+    }catch(e){ if(t===loadToken) setStatus('⚠️ Could not load from Drive','rgba(255,80,80,.4)'); }
+  }
+  async function writeWeek(newWeek){
+    weekCache=newWeek; render();
+    if(!hasGS) return;
+    queueSave('week:'+weekId(),'saveWeek',[weekId(),newWeek]);
+  }
+  async function writeRoster(grade,list){
+    rosterCache[grade]=list; render();
+    if(!hasGS) return;
+    queueSave('roster:'+grade,'saveRoster',[grade,list]);
+  }
+  function shrinkImage(file,max){
+    return new Promise((res,rej)=>{
+      const img=new Image(), url=URL.createObjectURL(file);
+      img.onload=()=>{
+        const s=Math.min(1,max/Math.max(img.width,img.height));
+        const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        URL.revokeObjectURL(url);
+        res(c.toDataURL('image/jpeg',0.8).split(',')[1]);
+      };
+      img.onerror=()=>rej(new Error('bad image'));
+      img.src=url;
+    });
+  }
+  function loadPhoto(id,im){
+    if(photoCache[id]){ im.src=photoCache[id]; return; }
+    gs('getPhoto',id).then(d=>{ photoCache[id]=d; im.src=d; }).catch(()=>{ im.alt='Could not load photo'; });
+  }
+
+  // ---------- ONE photo = read the marks + keep the photo ----------
+  async function readPhoto(day,p,file){
+    const names=students().slice(), wid=weekId();
+    if(!names.length){ alert('Upload the roster first.'); return; }
+    busyReading=true; render();
+    setStatus('🔄 Reading Period '+p+' marks from photo… (10–30 sec)');
+    const finish=(msg,bg)=>{ busyReading=false; render(); setStatus(msg,bg); };
+
+    let b64;
+    try{ b64=await shrinkImage(file,2000); }
+    catch(e){ finish('⚠️ Could not open photo','rgba(255,80,80,.4)'); alert('That file could not be opened as a picture. Please try again with a normal photo (JPG/PNG).'); return; }
+
+    // 1) read the marks (the important part)
+    let marks;
+    try{ marks=await gs('extractMarks',b64,names,p); }
+    catch(e){ finish('⚠️ Could not read photo','rgba(255,80,80,.4)'); alert(explainError(e)); return; }
+
+    // 2) keep the photo in Drive as a record (a failure here doesn't block the marks)
+    let photoId=null;
+    try{ photoId=await gs('uploadPhoto',wid+'_'+day+'_P'+p+'.jpg','image/jpeg',b64); }catch(e){}
+
+    busyReading=false;
+    if(wid!==weekId()){
+      render(); setStatus('🟢 Synced with Google Drive');
+      alert('You changed the grade/month/week while the photo was being read, so nothing was filled in. Go back to that week and take the photo again.');
+      return;
+    }
+    const w=JSON.parse(JSON.stringify(weekCache));
+    if(!w.scores[day]) w.scores[day]={};
+    if(!w.scores[day][p]) w.scores[day][p]={};
+    let filled=0; const missed=[];
+    (Array.isArray(marks)?marks:[]).forEach(m=>{
+      const i=Number(m.index);
+      if(!names[i]) return;
+      if(m.score===null||m.score===undefined||m.score===''||isNaN(Number(m.score))){ missed.push(names[i]); return; }
+      w.scores[day][p][i]=Math.max(0,Math.min(10,Math.round(Number(m.score)))); filled++;
+    });
+    if(photoId){ if(!w.photos) w.photos={}; w.photos[day+'_P'+p]=photoId; }
+    lastPeriod[day]=p;
+    writeWeek(w);
+
+    if(!filled){
+      alert(day+' Period '+p+': no marks could be read from this photo.\n\nTips: take the photo straight-on in good light, make sure the names and marks are in focus, and check you picked the right period.');
+    } else {
+      alert(day+' Period '+p+': filled '+filled+' of '+names.length+' marks.'
+        +(missed.length?'\n\nCould not read: '+missed.join(', ')+'\n(type these in by hand)':'')
+        +'\n\nPlease check the marks against your sheet.');
+    }
+  }
+
+  // ---------- UI builders ----------
+  function buildGradeTabs(){
+    const el=document.getElementById('gradeTabs'); el.innerHTML='';
+    GRADES.forEach(g=>{
+      const b=document.createElement('button');
+      b.className='tab'+(g===activeGrade?' active':'');
+      b.textContent='Grade '+g;
+      b.onclick=()=>{ if(g===activeGrade) return; activeGrade=g; subscribeAll(); render(); };
+      el.appendChild(b);
+    });
+  }
+  function buildMonthWeek(){
+    const ms=document.getElementById('monthSelect');
+    ms.innerHTML=MONTHS.map(m=>`<option value="${m}"${m===activeMonth?' selected':''}>${m}</option>`).join('');
+    ms.onchange=()=>{ activeMonth=ms.value; subscribeAll(); render(); };
+    const ws=document.getElementById('weekSelect');
+    ws.innerHTML=WEEKS.map(w=>`<option value="${w}"${w===activeWeek?' selected':''}>Week ${w}</option>`).join('');
+    ws.onchange=()=>{ activeWeek=Number(ws.value); subscribeAll(); render(); };
+  }
+  function buildTabs(){
+    const el=document.getElementById('tabs'); el.innerHTML='';
+    TABS.forEach(d=>{
+      const b=document.createElement('button');
+      b.className='tab'+(d===activeTab?' active':'');
+      b.textContent = d==='Overview' ? '📊 Weekly Overview' : d;
+      b.onclick=()=>{ activeTab=d; render(); };
+      el.appendChild(b);
+    });
+  }
+  function applyFlag(inp,val){
+    inp.classList.remove('hi','lo');
+    if(val==="") return;
+    const n=Number(val);
+    if(n>=HI) inp.classList.add('hi'); else if(n<=LO) inp.classList.add('lo');
+  }
+
+  function buildDayTable(day){
+    const wrap=document.createElement('div'); wrap.className='tablewrap';
+    const table=document.createElement('table');
+    const thead=document.createElement('thead');
+    const trh=document.createElement('tr');
+    trh.innerHTML='<th class="name">Student</th>'+PERIODS.map(p=>`<th>P${p}</th>`).join('')+'<th>Total</th><th></th>';
+    thead.appendChild(trh); table.appendChild(thead);
+    const tbody=document.createElement('tbody');
+    students().forEach((name,idx)=>{
+      const tr=document.createElement('tr');
+      const tdName=document.createElement('td'); tdName.className='name';
+      const ni=document.createElement('input'); ni.className='nameinput'; ni.value=name; ni.disabled=!canWrite;
+      ni.onchange=()=>{ const list=students().slice(); list[idx]=ni.value.trim()||name; writeRoster(activeGrade,list); };
+      tdName.appendChild(ni); tr.appendChild(tdName);
+      PERIODS.forEach(p=>{
+        const td=document.createElement('td');
+        const inp=document.createElement('input');
+        inp.type='number'; inp.min=0; inp.max=10; inp.className='score'; inp.disabled=!canWrite;
+        inp.value=getScore(day,p,idx);
+        applyFlag(inp,inp.value);
+        inp.onchange=()=>{
+          const v=inp.value.trim();
+          const w=JSON.parse(JSON.stringify(weekCache));
+          if(!w.scores[day]) w.scores[day]={};
+          if(!w.scores[day][p]) w.scores[day][p]={};
+          if(v==="") delete w.scores[day][p][idx]; else w.scores[day][p][idx]=Math.max(0,Math.min(10,Number(v)));
+          applyFlag(inp, w.scores[day][p][idx]===undefined?"":w.scores[day][p][idx]);
+          writeWeek(w); renderSummary(day);
+        };
+        td.appendChild(inp); tr.appendChild(td);
+      });
+      const tdTotal=document.createElement('td'); tdTotal.className='total'; tdTotal.textContent=dayTotal(idx,day);
+      tr.appendChild(tdTotal);
+      const tdRm=document.createElement('td');
+      if(canWrite){
+        const rm=document.createElement('button'); rm.className='rm'; rm.textContent='✕'; rm.title='Remove student';
+        rm.onclick=()=>{
+          if(!confirm('Remove '+name+' from Grade '+activeGrade+'\'s roster?')) return;
+          const list=students().slice(); list.splice(idx,1);
+          writeRoster(activeGrade,list);
+        };
+        tdRm.appendChild(rm);
+      }
+      tr.appendChild(tdRm);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table);
+    return wrap;
+  }
+
+  function renderSummary(day){
+    const el=document.getElementById('summary-'+day); if(!el) return;
+    let html='';
+    PERIODS.forEach(p=>{
+      const bucket=(weekCache.scores[day]&&weekCache.scores[day][p])||{};
+      const hi=[],lo=[];
+      Object.keys(bucket).forEach(k=>{
+        const v=bucket[k]; const nm=students()[Number(k)]; if(!nm) return;
+        if(v>=HI) hi.push(nm); else if(v<=LO) lo.push(nm);
+      });
+      if(hi.length||lo.length){
+        html+=`<div style="margin:6px 0"><strong>P${p}</strong> `;
+        if(hi.length) html+=`<span class="chip hi">8+: ${hi.join(', ')}</span> `;
+        if(lo.length) html+=`<span class="chip lo">≤5: ${lo.join(', ')}</span>`;
+        html+='</div>';
+      }
+    });
+    el.innerHTML = html || '<div class="empty">No scores entered yet for '+day+'.</div>';
+  }
+
+  function buildDayPanel(day){
+    const panel=document.createElement('div'); panel.id='panel-'+day;
+    panel.style.display = (day===activeTab)?'block':'none';
+
+    // --- Photo capture (reads marks AND keeps the photo) — placed at the top so it's easy to find ---
+    if(canWrite && hasGS){
+      const rt=document.createElement('div'); rt.className='section-title'; rt.style.marginTop='4px';
+      rt.textContent='📷 Photo of the sheet — '+day;
+      panel.appendChild(rt);
+      const pbox=document.createElement('div'); pbox.className='photobox';
+      const rbox=document.createElement('div'); rbox.className='addrow'; rbox.style.marginTop='0';
+      const psel=document.createElement('select');
+      psel.innerHTML=PERIODS.map(p=>'<option value="'+p+'">Period '+p+'</option>').join('');
+      psel.value=String(lastPeriod[day]||1);
+      psel.onchange=()=>{ lastPeriod[day]=Number(psel.value); };
+      // Camera input: opens the phone camera straight away
+      const camIn=document.createElement('input'); camIn.type='file'; camIn.accept='image/*'; camIn.setAttribute('capture','environment'); camIn.style.display='none';
+      // Gallery input: lets you pick a photo you already took
+      const galIn=document.createElement('input'); galIn.type='file'; galIn.accept='image/*'; galIn.style.display='none';
+      const onPick=inp=>()=>{ const f=inp.files[0]; inp.value=''; if(f) readPhoto(day,Number(psel.value),f); };
+      camIn.onchange=onPick(camIn); galIn.onchange=onPick(galIn);
+      const camBtn=document.createElement('button'); camBtn.className='btn';
+      camBtn.textContent = busyReading ? '⏳ Reading photo…' : '📸 Take photo';
+      camBtn.disabled = busyReading;
+      camBtn.onclick=()=>camIn.click();
+      const galBtn=document.createElement('button'); galBtn.className='btn secondary';
+      galBtn.textContent='🖼️ Choose from gallery';
+      galBtn.disabled = busyReading;
+      galBtn.onclick=()=>galIn.click();
+      rbox.appendChild(psel); rbox.appendChild(camBtn); rbox.appendChild(galBtn); rbox.appendChild(camIn); rbox.appendChild(galIn);
+      pbox.appendChild(rbox);
+      const rn=document.createElement('div'); rn.className='empty'; rn.style.marginTop='8px';
+      rn.textContent='1) Pick the period  2) Tap “Take photo” to use the camera, or “Choose from gallery” for a photo you already took. The marks fill into the table below and the photo is saved in Drive. Always double-check the marks.';
+      pbox.appendChild(rn);
+      panel.appendChild(pbox);
+      const gap=document.createElement('div'); gap.style.height='14px'; panel.appendChild(gap);
+    } else if(!hasGS){
+      const n=document.createElement('div'); n.className='empty'; n.style.marginBottom='10px';
+      n.textContent='Photo reading needs the Drive connection.'; panel.appendChild(n);
+    }
+
+    panel.appendChild(buildDayTable(day));
+    if(canWrite){
+      const addRow=document.createElement('div'); addRow.className='addrow';
+      const addInput=document.createElement('input'); addInput.placeholder='Add student name';
+      const addBtn=document.createElement('button'); addBtn.className='btn secondary'; addBtn.textContent='+ Add';
+      addBtn.onclick=()=>{ const v=addInput.value.trim(); if(!v) return; const list=students().slice(); list.push(v); addInput.value=''; writeRoster(activeGrade,list); };
+      addRow.appendChild(addInput); addRow.appendChild(addBtn); panel.appendChild(addRow);
+    }
+    const secTitle=document.createElement('div'); secTitle.className='section-title';
+    secTitle.textContent='Period flags for '+day+' (score 8+ or 5 and below)';
+    panel.appendChild(secTitle);
+    const summary=document.createElement('div'); summary.id='summary-'+day; panel.appendChild(summary);
+
+    // --- Saved photos for this day ---
+    const photos=weekCache.photos||{};
+    const keys=Object.keys(photos).filter(k=>k===day||k.indexOf(day+'_P')===0).sort();
+    if(keys.length){
+      const pt=document.createElement('div'); pt.className='section-title';
+      pt.textContent='🗂️ Saved sheet photos — '+day;
+      panel.appendChild(pt);
+      const gal=document.createElement('div'); gal.className='gallery';
+      keys.forEach(k=>{
+        const id=photos[k];
+        const box=document.createElement('div'); box.className='ph';
+        const lbl=document.createElement('div'); lbl.className='lbl';
+        lbl.textContent = k===day ? 'Day photo' : 'Period '+k.split('_P')[1];
+        box.appendChild(lbl);
+        const im=document.createElement('img'); im.alt='Loading photo…';
+        loadPhoto(id,im); box.appendChild(im);
+        if(canWrite){
+          const rmP=document.createElement('button'); rmP.className='btn secondary'; rmP.textContent='Remove photo';
+          rmP.onclick=()=>{
+            if(!confirm('Remove this photo? (The marks stay in the table.)')) return;
+            const w=JSON.parse(JSON.stringify(weekCache));
+            delete w.photos[k];
+            delete photoCache[id];
+            if(hasGS){ gs('deletePhoto',id).catch(()=>{}); }
+            writeWeek(w);
+          };
+          box.appendChild(rmP);
+        }
+        gal.appendChild(box);
+      });
+      panel.appendChild(gal);
+    }
+    return panel;
+  }
+
+  function buildOverviewPanel(){
+    const panel=document.createElement('div'); panel.id='panel-Overview';
+    panel.style.display = (activeTab==='Overview')?'block':'none';
+    const ranked=rankedList().filter(s=>s.avg!==null).sort((a,b)=>b.avg-a.avg);
+    const topIdx=new Set(ranked.slice(0,3).map(s=>s.idx));
+    const bottomIdx=new Set(ranked.length>3?ranked.slice(-3).map(s=>s.idx):[]);
+
+    const wrap=document.createElement('div'); wrap.className='tablewrap';
+    const table=document.createElement('table');
+    const thead=document.createElement('thead');
+    const trh=document.createElement('tr');
+    trh.innerHTML='<th class="name">Student</th>'+DAYS.map(d=>`<th>${d}<br>Total</th>`).join('')+'<th>Weekly<br>Avg</th>';
+    thead.appendChild(trh); table.appendChild(thead);
+    const tbody=document.createElement('tbody');
+    students().forEach((name,idx)=>{
+      const tr=document.createElement('tr');
+      if(topIdx.has(idx)) tr.className='top'; else if(bottomIdx.has(idx)) tr.className='bottom';
+      let row='<td class="name">'+(topIdx.has(idx)?'🏆 ':'')+(bottomIdx.has(idx)?'⚠️ ':'')+name+'</td>';
+      DAYS.forEach(d=>{ row+='<td>'+dayTotal(idx,d)+'</td>'; });
+      const av=weeklyAvg(idx);
+      row+='<td class="total">'+(av===null?'—':av.toFixed(1))+'</td>';
+      tr.innerHTML=row; tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table); panel.appendChild(wrap);
+
+    const rewardBox=document.createElement('div'); rewardBox.className='reward';
+    let rhtml='<div style="font-weight:700;font-size:1rem">🏆 Top 3 — Friday Reward ('+activeMonth+' Week '+activeWeek+')</div>';
+    if(!ranked.length) rhtml+='<div class="empty" style="margin-top:6px">No scores entered yet this week.</div>';
+    else rhtml+='<ol>'+ranked.slice(0,3).map(s=>`<li>${s.name} — avg ${s.avg.toFixed(1)}</li>`).join('')+'</ol>';
+    rewardBox.innerHTML=rhtml; panel.appendChild(rewardBox);
+
+    if(ranked.length>3){
+      const watchBox=document.createElement('div'); watchBox.className='watch';
+      let whtml='<div style="font-weight:700;font-size:1rem">⚠️ Bottom 3 — Needs Support</div>';
+      whtml+='<ol>'+ranked.slice(-3).reverse().map(s=>`<li>${s.name} — avg ${s.avg.toFixed(1)}</li>`).join('')+'</ol>';
+      watchBox.innerHTML=whtml; panel.appendChild(watchBox);
+    }
+    return panel;
+  }
+
+  function render(){
+    document.getElementById('gradeLine').textContent=
+      'Grade '+activeGrade+' · '+activeMonth+' · Week '+activeWeek+' · scores per period (0–10)'+(canWrite?'':' · read-only');
+    buildGradeTabs(); buildMonthWeek(); buildTabs();
+    const panels=document.getElementById('panels'); panels.innerHTML='';
+    DAYS.forEach(d=>panels.appendChild(buildDayPanel(d)));
+    panels.appendChild(buildOverviewPanel());
+    DAYS.forEach(d=>renderSummary(d));
+  }
+
+  // ---------- print / excel / roster upload ----------
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function printTable(days){
+    let h='<table class="ptable"><thead><tr><th class="name" rowspan="2">Student</th>';
+    days.forEach(d=>{ h+=`<th colspan="8">${d}</th>`; });
+    h+='</tr><tr>';
+    days.forEach(()=>{ PERIODS.forEach(p=>{ h+=`<th>P${p}</th>`; }); h+='<th>Total</th>'; });
+    h+='</tr></thead><tbody>';
+    students().forEach((name,idx)=>{
+      h+='<tr><td class="name">'+esc(name)+'</td>';
+      days.forEach(d=>{
+        PERIODS.forEach(p=>{ h+='<td>'+esc(getScore(d,p,idx))+'</td>'; });
+        h+='<td><b>'+esc(dayTotal(idx,d))+'</b></td>';
+      });
+      h+='</tr>';
+    });
+    h+='</tbody></table>'; return h;
+  }
+  function printWeek(){
+    const area=document.getElementById('printArea');
+    let html='<div class="phead">Um Al-Qura Islamic School — Behavior Tracking Sheet</div>';
+    html+='<div class="psub">Grade '+esc(activeGrade)+' &nbsp;·&nbsp; '+esc(activeMonth)+' &nbsp;·&nbsp; Week '+esc(activeWeek)+'</div>';
+    html+=printTable(['Mon','Tue'])+'<div class="pbreak"></div>';
+    html+='<div class="phead">Um Al-Qura Islamic School — Behavior Tracking Sheet</div>';
+    html+='<div class="psub">Grade '+esc(activeGrade)+' &nbsp;·&nbsp; '+esc(activeMonth)+' &nbsp;·&nbsp; Week '+esc(activeWeek)+'</div>';
+    html+=printTable(['Wed','Thu','Fri']);
+    const ranked=rankedList().filter(s=>s.avg!==null).sort((a,b)=>b.avg-a.avg);
+    if(ranked.length){
+      html+='<div style="margin-top:10px;font-weight:700">🏆 Top 3 — Friday Reward</div><ol>';
+      ranked.slice(0,3).forEach(s=>{ html+='<li>'+esc(s.name)+' — avg '+s.avg.toFixed(1)+'</li>'; });
+      html+='</ol>';
+      if(ranked.length>3){
+        html+='<div style="margin-top:6px;font-weight:700">⚠️ Bottom 3 — Needs Support</div><ol>';
+        ranked.slice(-3).reverse().forEach(s=>{ html+='<li>'+esc(s.name)+' — avg '+s.avg.toFixed(1)+'</li>'; });
+        html+='</ol>';
+      }
+    }
+    area.innerHTML=html; window.print();
+  }
+
+  function exportExcel(){
+    if(typeof XLSX==='undefined'){ alert('Excel export needs an internet connection to load a small library. Please reconnect and try again.'); return; }
+    const wb=XLSX.utils.book_new();
+    DAYS.forEach(day=>{
+      const rows=[['Student',...PERIODS.map(p=>'P'+p),'Total']];
+      students().forEach((name,idx)=>{
+        rows.push([name, ...PERIODS.map(p=>{ const v=getScore(day,p,idx); return v===''?'':v; }), dayTotal(idx,day)]);
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), day);
+    });
+    const ranked=rankedList();
+    const sorted=[...ranked].filter(s=>s.avg!==null).sort((a,b)=>b.avg-a.avg);
+    const topIdx=new Set(sorted.slice(0,3).map(s=>s.idx));
+    const bottomIdx=new Set(sorted.length>3?sorted.slice(-3).map(s=>s.idx):[]);
+    const orows=[['Student','Mon Total','Tue Total','Wed Total','Thu Total','Fri Total','Weekly Avg','Note']];
+    ranked.forEach(s=>{
+      const note=topIdx.has(s.idx)?'Top 3 - Friday Reward':(bottomIdx.has(s.idx)?'Bottom 3 - Needs Support':'');
+      orows.push([s.name, dayTotal(s.idx,'Mon'), dayTotal(s.idx,'Tue'), dayTotal(s.idx,'Wed'), dayTotal(s.idx,'Thu'), dayTotal(s.idx,'Fri'), s.avg===null?'':Number(s.avg.toFixed(1)), note]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(orows), 'Weekly Overview');
+    XLSX.writeFile(wb, 'Grade'+activeGrade+'_'+activeMonth+'_Week'+activeWeek+'_Behavior.xlsx');
+  }
+
+  function clearWeek(){
+    if(!confirm('Clear ALL scores and photos for Grade '+activeGrade+' — '+activeMonth+' Week '+activeWeek+'? This cannot be undone.')) return;
+    writeWeek(emptyWeek());
+  }
+
+  function uploadRoster(){
+    if(typeof XLSX==='undefined'){ alert('Roster upload needs an internet connection to load a small library. Please reconnect and try again.'); return; }
+    document.getElementById('rosterFile').click();
+  }
+  function handleRosterFile(){
+    const f=document.getElementById('rosterFile').files[0]; if(!f) return;
+    const reader=new FileReader();
+    reader.onload=async (e)=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'binary'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+        if(!rows.length){ alert('That file looks empty.'); return; }
+        const keys=Object.keys(rows[0]);
+        const gradeKey=keys.find(k=>/^grade$/i.test(k.trim()))||keys.find(k=>/grade/i.test(k));
+        const nameKey=keys.find(k=>/^student\s*name$/i.test(k.trim()))||keys.find(k=>/name/i.test(k));
+        if(!gradeKey||!nameKey){ alert('Could not find "Grade" and "Student Name" columns. Found: '+keys.join(', ')); return; }
+        const byGrade={};
+        rows.forEach(r=>{
+          const g=String(r[gradeKey]).trim().replace(/[^0-9]/g,'');
+          const nm=String(r[nameKey]).trim();
+          if(!g||!nm||!GRADES.includes(g)) return;
+          (byGrade[g]=byGrade[g]||[]).push(nm);
+        });
+        const summary=Object.keys(byGrade).sort().map(g=>'Grade '+g+': '+byGrade[g].length+' students').join('\n');
+        if(!Object.keys(byGrade).length){ alert('No rows matched a valid grade (1-8) with a name.'); return; }
+        if(!confirm('This will REPLACE the current roster for these grades:\n\n'+summary+'\n\nContinue?')) return;
+        for(const g of Object.keys(byGrade)){ await writeRoster(g, byGrade[g]); }
+        setStatus('🔄 Saving to Drive…'); await idle();
+        alert('Roster saved to Google Drive:\n'+summary);
+      }catch(err){ alert('Could not read that file. Make sure it is a valid Excel (.xlsx) or CSV file.'); }
+      finally{ document.getElementById('rosterFile').value=''; }
+    };
+    reader.readAsBinaryString(f);
+  }
+
+  document.getElementById('printBtn').onclick=printWeek;
+  document.getElementById('excelBtn').onclick=exportExcel;
+  document.getElementById('clearBtn').onclick=clearWeek;
+  document.getElementById('rosterBtn').onclick=uploadRoster;
+  document.getElementById('rosterFile').onchange=handleRosterFile;
+
+  render();
+  initBackend();
+})();
+</script>
+</body>
+</html>
